@@ -56,6 +56,7 @@ TO_PATCH = [
     'service_stop',
     'service_start',
     'glob',
+    'os_application_version_set',
 ]
 
 openstack_origin_git = \
@@ -639,7 +640,7 @@ class TestNeutronAPIUtils(CharmTestCase):
     def test_calico_source_liberty(self):
         self.get_os_codename_install_source.return_value = 'liberty'
         nutils.additional_install_locations('Calico', '')
-        self.add_source.assert_called_with('ppa:project-calico/stable')
+        self.add_source.assert_called_with('ppa:project-calico/calico-1.4')
 
     @patch('shutil.rmtree')
     def test_force_etcd_restart(self, rmtree):
@@ -674,6 +675,9 @@ class TestNeutronAPIUtils(CharmTestCase):
             nutils.assess_status('test-config')
             asf.assert_called_once_with('test-config')
             callee.assert_called_once_with()
+            self.os_application_version_set.assert_called_with(
+                nutils.VERSION_PACKAGE
+            )
 
     @patch.object(nutils, 'get_optional_interfaces')
     @patch.object(nutils, 'REQUIRED_INTERFACES')

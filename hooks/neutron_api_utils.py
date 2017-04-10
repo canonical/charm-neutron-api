@@ -41,6 +41,9 @@ from charmhelpers.contrib.openstack.utils import (
     make_assess_status_func,
     pause_unit,
     resume_unit,
+    os_application_version_set,
+    token_cache_pkgs,
+    enable_memcache,
 )
 
 from charmhelpers.contrib.python.packages import (
@@ -104,6 +107,8 @@ KILO_PACKAGES = [
     'python-neutron-vpnaas',
 ]
 
+VERSION_PACKAGE = 'neutron-common'
+
 BASE_GIT_PACKAGES = [
     'libffi-dev',
     'libmysqlclient-dev',
@@ -150,6 +155,7 @@ APACHE_CONF = '/etc/apache2/sites-available/openstack_https_frontend'
 APACHE_24_CONF = '/etc/apache2/sites-available/openstack_https_frontend.conf'
 NEUTRON_DEFAULT = '/etc/default/neutron-server'
 CA_CERT_PATH = '/usr/local/share/ca-certificates/keystone_juju_ca_cert.crt'
+MEMCACHED_CONF = '/etc/memcached.conf'
 
 BASE_RESOURCE_MAP = OrderedDict([
     (NEUTRON_CONF, {
@@ -170,7 +176,8 @@ BASE_RESOURCE_MAP = OrderedDict([
                      context.NotificationDriverContext(),
                      context.BindHostContext(),
                      context.WorkerConfigContext(),
-                     context.InternalEndpointContext()],
+                     context.InternalEndpointContext(),
+                     context.MemcacheContext()],
     }),
     (NEUTRON_DEFAULT, {
         'services': ['neutron-server'],
@@ -235,7 +242,7 @@ def additional_install_locations(plugin, source):
             # From Liberty onwards, we can point to a PPA that does not include
             # any patched OpenStack packages, and hence is independent of the
             # OpenStack release.
-            calico_source = 'ppa:project-calico/stable'
+            calico_source = 'ppa:project-calico/calico-1.4'
 
         add_source(calico_source)
 
@@ -325,6 +332,7 @@ def determine_packages(source=None):
             for p in GIT_PACKAGE_BLACKLIST_KILO:
                 packages.remove(p)
 
+    packages.extend(token_cache_pkgs(release=release))
     return list(set(packages))
 
 
@@ -381,6 +389,10 @@ def resource_map(release=None):
         )
         resource_map[NEUTRON_DEFAULT]['contexts'] = \
             [neutron_api_context.NeutronApiSDNConfigFileContext()]
+    if enable_memcache(release=release):
+        resource_map[MEMCACHED_CONF] = {
+            'contexts': [context.MemcacheContext()],
+            'services': ['memcached']}
     return resource_map
 
 
@@ -739,6 +751,7 @@ def assess_status(configs):
     @returns None - this function is executed for its side-effect
     """
     assess_status_func(configs)()
+    os_application_version_set(VERSION_PACKAGE)
 
 
 def assess_status_func(configs):
