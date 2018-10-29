@@ -42,6 +42,7 @@ from charmhelpers.core.hookenv import (
 from charmhelpers.core.host import (
     mkdir,
     service_reload,
+    write_file
 )
 
 from charmhelpers.fetch import (
@@ -286,6 +287,10 @@ def config_changed():
     configure_https()
     update_nrpe_config()
     CONFIGS.write_all()
+    policy_json = 'policy.json'
+    with open('files/{}'.format(policy_json), 'rb') as content:
+        target = '/etc/neutron/{}'.format(policy_json)
+        write_file(target, content.read(), perms=0o644)
     for r_id in relation_ids('neutron-api'):
         neutron_api_relation_joined(rid=r_id)
     for r_id in relation_ids('neutron-plugin-api'):
